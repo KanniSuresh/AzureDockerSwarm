@@ -1,50 +1,51 @@
 ---
-
-- name: Install Docker
+- name: Install required packages and Docker on Debian
   hosts: all
   become: true
   tasks:
     - name: Install required packages
       apt:
-        name: ['apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common']
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
         state: present
+      when: ansible_os_family == 'Debian'
 
     - name: Add Docker GPG key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
+      when: ansible_os_family == 'Debian'
 
     - name: Add Docker repository
       apt_repository:
         repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
         state: present
+      when: ansible_os_family == 'Debian'
 
     - name: Install Docker
       apt:
         name: docker-ce
         state: present
+      when: ansible_os_family == 'Debian'
 
     - name: Start and enable Docker service
       service:
         name: docker
         state: started
         enabled: yes
-    
-    - name: Install Python and pip on Debian
-      apt:
-        name: ['python3', 'python3-pip']
-        state: present
+
+    - name: Install python-pip on Debian
+      become: true
+      shell: apt-get install -y python-pip
       when: ansible_os_family == 'Debian'
 
-    - name: Install pip package (if needed)
-      package:
-        name: python3-pip
-        state: present
+    - name: Install python-pip on Debian
+      become: true
+      shell: pip install docker
       when: ansible_os_family == 'Debian'
-
-    - name: Install Docker Python Package
-      pip:
-        name: docker
 
 - name: Initialize Docker Swarm on the first manager
   hosts: managers[0]
@@ -80,4 +81,3 @@
         advertise_addr: enp0s8:2377
         join_token: "{{ hostvars[groups['managers'][0]]['swarm_init_output']['swarm_facts']['JoinTokens']['Worker'] }}"
         remote_addrs: "{{ groups['managers'][0] }}"
-
